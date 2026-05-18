@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mymic Lounge - 메이플 감성 2D 노래방</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Pretendard -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #080710;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        /* Custom Glowing Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8b5cf6;
+            border-radius: 3px;
+        }
+        /* Pulse Animation for active microphone button */
+        @keyframes pulse-purple {
+            0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.6); }
+            50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.9); }
+        }
+        .mic-active {
+            animation: pulse-purple 2s infinite;
+        }
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Keyboard help bubble styling */
+        .kbd-key {
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-bottom-width: 3px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: monospace;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header Navigation -->
+    <header class="w-full py-4 px-6 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <i class="fa-solid fa-guitar text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-black tracking-tight bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">MYMIC MAPLE LOUNGE</h1>
+                <p class="text-xs text-slate-400">메이플 감성 2D 물리 엔진 & 마이크 오디오 필터 프로토타입</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full font-medium">Web Audio API Active</span>
+        </div>
+    </header>
+
+    <!-- Pre-entry setup screen -->
+    <section id="setupScreen" class="flex-grow flex items-center justify-center p-6 z-10">
+        <div class="glass-panel w-full max-w-2xl rounded-2xl p-8 border border-purple-500/20 shadow-2xl">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-black text-white bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">라운지 입장 전 캐릭터 설정</h2>
+                <p class="text-sm text-slate-400 mt-1">이름과 외형을 고르고 마이크 입력을 가동해 보세요.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Left half: Info input and Character Select -->
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">닉네임 설정</label>
+                        <input type="text" id="nicknameInput" value="단풍잎싱어" class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-purple-500 transition-colors">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase">캐릭터 외형 선택</label>
+                        <div class="grid grid-cols-5 gap-2" id="characterSelectorContainer">
+                            <!-- Character selector options generated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right half: Microphone setup and Tester -->
+                <div class="flex flex-col gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase">오디오 자가진단</label>
+                    <button id="setupMicBtn" onclick="requestSetupMic()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sm font-bold text-slate-200 border border-slate-700 rounded-xl transition-all flex items-center justify-center gap-2">
+                        <i id="setupMicIcon" class="fa-solid fa-microphone"></i>
+                        <span id="setupMicBtnText">마이크 권한 획득 & 테스트</span>
+                    </button>
+                    
+                    <!-- Volume Visualizer Bar -->
+                    <div class="mt-2">
+                        <div class="flex justify-between text-[11px] text-slate-500 mb-1">
+                            <span>마이크 입력 데시벨</span>
+                            <span id="setupDecibelText">0%</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-850">
+                            <div id="setupMicVolumeBar" class="w-0 h-full bg-gradient-to-r from-purple-500 to-indigo-400 transition-all duration-75"></div>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 leading-normal">
+                        * 마이크 입력을 연결하면 가창자 본인의 목소리가 스피커를 타고 실시간 리버브/에코 이펙트를 포함해 연동됩니다. (하울링 방지를 위해 이어폰 착용 권장)
+                    </p>
+                </div>
+            </div>
+
+            <button onclick="enterLoungeGame()" class="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-98 text-white font-black rounded-xl shadow-lg shadow-purple-500/20 transition-all flex items-center justify-center gap-2 text-lg">
+                <span>라운지 가상 노래방 입장하기</span>
+                <i class="fa-solid fa-right-to-bracket"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- Main game interactive lounge screen -->
+    <section id="gameScreen" class="hidden flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 max-w-7xl mx-auto w-full">
+        
+        <!-- Left Column: Platformer Map Space & Control Panel (9 columns) -->
+        <div class="lg:col-span-9 flex flex-col gap-5">
+            
+            <!-- 2D Platformer Canvas Container -->
+            <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col aspect-video shadow-2xl">
+                <!-- Live indicator overlay -->
+                <div class="absolute top-4 left-4 z-10 flex items-center gap-2">
+                    <span class="flex h-3 w-3 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-xs font-semibold bg-slate-900/95 text-slate-300 px-3 py-1 rounded-md border border-slate-800 shadow-lg">메이플 횡스크롤 노래방 맵</span>
+                </div>
+
+                <!-- Mic state ribbon -->
+                <div id="gameMicBanner" class="absolute top-4 right-4 z-10 text-xs px-3 py-1 rounded-md border bg-red-500/10 border-red-500/20 text-red-400 font-semibold shadow-lg">
+                    <i class="fa-solid fa-microphone-slash mr-1"></i> 마이크 꺼짐
+                </div>
+
+                <!-- Keyboard Control Instruction Overlay -->
+                <div class="absolute bottom-4 left-4 z-10 flex flex-wrap gap-2 max-w-[80%] bg-slate-950/85 px-4 py-2.5 rounded-xl border border-slate-900 shadow-md">
+                    <div class="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-gamepad text-purple-400"></i>
+                        <span>조작 가이드:</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
+                        <span class="kbd-key">←</span> <span class="kbd-key">→</span> 좌우 이동 | 
+                        <span class="kbd-key">Space</span> 또는 <span class="kbd-key">↑</span> 점프 | 
+                        <span class="kbd-key">↓</span> 또는 <span class="kbd-key">Ctrl+↓</span> 하향 점프 | 
+                        사다리 앞 <span class="kbd-key">↑</span> <span class="kbd-key">↓</span> 등반
+                    </div>
+                </div>
+
+                <!-- 2D Platformer Canvas -->
+                <canvas id="loungeMap" class="w-full h-full cursor-crosshair bg-[#0b0f19]"></canvas>
+            </div>
+
+            <!-- Floating Adjuster Panel for Echo / Reverb details -->
+            <div id="audioAdjusterPanel" class="hidden glass-panel p-5 rounded-2xl border border-purple-500/30 shadow-2xl flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-purple-400 font-bold">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span id="adjusterPanelTitle">공간 사운드 음향 조절</span>
+                    </div>
+                    <button onclick="closeAdjusterPanel()" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-circle-xmark text-lg"></i>
+                    </button>
+                </div>
+                
+                <!-- Reverb Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-900">
+                        <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                            <span class="font-semibold text-purple-400"><i class="fa-solid fa-mountain mr-1"></i>리버브 크기 (공간 확장감)</span>
+                            <span id="reverbValText" class="font-bold">0%</span>
+                        </div>
+                        <input type="range" id="reverbSlider" min="0" max="100" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                        <p class="text-[10px] text-slate-500 mt-1">성당이나 웅장한 강당 수준의 여운을 제공합니다.</p>
+                    </div>
+
+                    <!-- Echo Controls -->
+                    <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-900">
+                        <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                            <span class="font-semibold text-pink-400"><i class="fa-solid fa-wave-square mr-1"></i>에코 디피드백 (소리 튕김)</span>
+                            <span id="echoValText" class="font-bold">0%</span>
+                        </div>
+                        <input type="range" id="echoSlider" min="0" max="100" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                        <p class="text-[10px] text-slate-500 mt-1">노래방 기계처럼 탁탁 소리를 뒤에 밀어 반복해 줍니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Navigation & Hardware Control Dock -->
+            <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 border border-slate-800/80 shadow-lg">
+                <div class="flex items-center gap-4">
+                    <!-- Audio Mic Activator -->
+                    <button id="micToggleButton" onclick="toggleMicrophone()" class="w-14 h-14 rounded-full bg-slate-800 border border-slate-700 hover:border-purple-500 hover:bg-slate-700 flex items-center justify-center transition-all duration-300 text-slate-400 focus:outline-none relative">
+                        <i id="micToggleIcon" class="fa-solid fa-microphone-slash text-xl"></i>
+                        <span class="absolute -top-1 -right-1 flex h-3.5 w-3.5" id="micGlowDot" style="display: none;">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-purple-500"></span>
+                        </span>
+                    </button>
+                    <div>
+                        <h3 id="micStatusText" class="font-bold text-slate-300">내 마이크 꺼짐</h3>
+                        <p id="micSubtext" class="text-xs text-slate-500">마이크를 활성화하여 이펙트를 얹어 노래해보세요.</p>
+                    </div>
+                </div>
+
+                <!-- Setup Control Sliders toggle triggers -->
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <button onclick="toggleAdjusterPanel(event)" class="flex-1 md:flex-initial py-3 px-5 bg-indigo-600/10 hover:bg-indigo-600/25 border border-indigo-500/30 hover:border-indigo-500/60 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-indigo-400 transition-all duration-200">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>마이크 이펙트 콘솔 열기</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Lounge Members List with Local Mute controllers -->
+        <div class="lg:col-span-3 flex flex-col gap-5">
+            <div class="glass-panel rounded-2xl border border-slate-800 shadow-2xl flex flex-col h-full min-h-[400px]">
+                <div class="bg-slate-900/60 p-4 border-b border-slate-800/80 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-users text-purple-400"></i>
+                        <span class="text-sm font-bold text-slate-200">라운지 접속 멤버 (<span id="userCount">1</span>)</span>
+                    </div>
+                </div>
+
+                <!-- Scrollable member list -->
+                <div class="p-4 overflow-y-auto flex-grow flex flex-col gap-3" id="loungeMemberListContainer">
+                    <!-- Listed items will be generated dynamically -->
+                </div>
+
+                <div class="p-3.5 bg-slate-900/40 text-center border-t border-slate-900">
+                    <p class="text-[10px] text-slate-500">
+                        <i class="fa-solid fa-volume-xmark mr-1"></i> 음소거를 한 유저는 나에게만 음성이 들리지 않고 본인은 모르게 됩니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- App Bottom Footer -->
+    <footer class="w-full text-center py-5 border-t border-slate-900 bg-slate-950 mt-auto">
+        <p class="text-[11px] text-slate-600">© 2026 Mymic Lounge Inc. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // ----------------------------------------------------
+        // Part 1: Real-time Audio Engine Setup (Web Audio API)
+        // ----------------------------------------------------
+        let audioCtx = null;
+        let micSource = null;
+        let dryGain = null;
+        let reverbNode = null;
+        let reverbGain = null;
+        let echoDelayNode = null;
+        let echoFeedbackGain = null;
+        let echoGain = null;
+        let setupAnalyser = null;
+        let setupDataArray = null;
+        let isMicOn = false;
+        let setupMicStream = null;
+        let setupAudioCtx = null;
+
+        // Dom links
+        const micToggleButton = document.getElementById('micToggleButton');
+        const micToggleIcon = document.getElementById('micToggleIcon');
+        const micGlowDot = document.getElementById('micGlowDot');
+        const micStatusText = document.getElementById('micStatusText');
+        const micSubtext = document.getElementById('micSubtext');
+        const gameMicBanner = document.getElementById('gameMicBanner');
+
+        const reverbSlider = document.getElementById('reverbSlider');
+        const reverbValText = document.getElementById('reverbValText');
+        const echoSlider = document.getElementById('echoSlider');
+        const echoValText = document.getElementById('echoValText');
+        const audioAdjusterPanel = document.getElementById('audioAdjusterPanel');
+
+        // Request mic permissions inside setup screen with simple visualizer
+        async function requestSetupMic() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                setupAudioCtx = new AudioContext();
+                setupMicStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                const source = setupAudioCtx.createMediaStreamSource(setupMicStream);
+                setupAnalyser = setupAudioCtx.createAnalyser();
+                setupAnalyser.fftSize = 256;
+                source.connect(setupAnalyser);
+
+                const bufferLength = setupAnalyser.frequencyBinCount;
+                setupDataArray = new Uint8Array(bufferLength);
+
+                document.getElementById('setupMicBtnText').innerText = "마이크 정상 연결됨";
+                document.getElementById('setupMicBtn').classList.add('border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-400');
+                document.getElementById('setupMicIcon').className = "fa-solid fa-microphone text-emerald-400";
+
+                // Trigger visual feedback loop
+                updateSetupVolumeMeter();
+
+            } catch (err) {
+                console.error("마이크 셋업 연결 에러:", err);
+                alert("마이크 디바이스 연결을 완료하지 못했거나 권한을 얻지 못했습니다.");
+            }
+        }
+
+        function updateSetupVolumeMeter() {
+            if (!setupAnalyser) return;
+            requestAnimationFrame(updateSetupVolumeMeter);
+            setupAnalyser.getByteFrequencyData(setupDataArray);
+            
+            let total = 0;
+            for (let i = 0; i < setupDataArray.length; i++) {
+                total += setupDataArray[i];
+            }
+            const average = total / setupDataArray.length;
+            const percentage = Math.min(100, Math.floor((average / 128) * 100));
+
+            document.getElementById('setupMicVolumeBar').style.width = percentage + "%";
+            document.getElementById('setupDecibelText').innerText = percentage + "%";
+        }
+
+        // Initialize Live Audio Connection Chain on lobby entry
+        async function startLiveMicAudio() {
+            try {
+                // Shut down temporary test contexts
+                if (setupAudioCtx) {
+                    setupAudioCtx.close();
+                    setupAudioCtx = null;
+                }
+                if (setupMicStream) {
+                    setupMicStream.getTracks().forEach(track => track.stop());
+                }
+
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                micSource = audioCtx.createMediaStreamSource(stream);
+
+                // 1. Dry Direct Speaker path
+                dryGain = audioCtx.createGain();
+                dryGain.gain.value = 1.0;
+
+                // 2. Reverb Path (Create custom convolver impulse response algorithmically)
+                reverbNode = audioCtx.createConvolver();
+                reverbNode.buffer = createReverbImpulse(2.5, 2.0); // 2.5s duration, 2.0s decay rate
+                reverbGain = audioCtx.createGain();
+                reverbGain.gain.value = parseFloat(reverbSlider.value) / 100;
+
+                // 3. Echo Path (Feedback loop)
+                echoDelayNode = audioCtx.createDelay(1.0);
+                echoDelayNode.delayTime.value = 0.35; // default delay 350ms
+                echoFeedbackGain = audioCtx.createGain();
+                echoFeedbackGain.gain.value = 0.45; // loop volume decay
+                echoGain = audioCtx.createGain();
+                echoGain.gain.value = parseFloat(echoSlider.value) / 100;
+
+                // Echo loop routing
+                echoDelayNode.connect(echoFeedbackGain);
+                echoFeedbackGain.connect(echoDelayNode);
+
+                // Connections
+                micSource.connect(dryGain);
+                micSource.connect(reverbNode);
+                micSource.connect(echoDelayNode);
+
+                reverbNode.connect(reverbGain);
+                echoDelayNode.connect(echoGain);
+
+                dryGain.connect(audioCtx.destination);
+                reverbGain.connect(audioCtx.destination);
+                echoGain.connect(audioCtx.destination);
+
+                isMicOn = true;
+                updateAudioUIState(true);
+            } catch (err) {
+                console.error("실시간 오디오 엔진 연결 에러:", err);
+                isMicOn = false;
+                updateAudioUIState(false);
+            }
+        }
+
+        function createReverbImpulse(duration, decay) {
+            const sampleRate = audioCtx.sampleRate;
+            const length = sampleRate * duration;
+            const impulse = audioCtx.createBuffer(2, length, sampleRate);
+            for (let channel = 0; channel < 2; channel++) {
+                const channelData = impulse.getChannelData(channel);
+                for (let i = 0; i < length; i++) {
+                    channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+                }
+            }
+            return impulse;
+        }
+
+        function stopLiveMicAudio() {
+            if (audioCtx) {
+                audioCtx.close();
+                audioCtx = null;
+            }
+            isMicOn = false;
+            updateAudioUIState(false);
+        }
+
+        function toggleMicrophone() {
+            if (!isMicOn) {
+                startLiveMicAudio();
+            } else {
+                stopLiveMicAudio();
+            }
+        }
+
+        function updateAudioUIState(active) {
+            if (active) {
+                micToggleButton.classList.add('bg-purple-600', 'border-purple-500', 'text-white', 'mic-active');
+                micToggleButton.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-400');
+                micToggleIcon.className = 'fa-solid fa-microphone text-xl';
+                micGlowDot.style.display = 'flex';
+                micStatusText.innerText = '내 마이크 활성화 중';
+                micStatusText.classList.add('text-purple-400');
+                micStatusText.classList.remove('text-slate-300');
+                micSubtext.innerText = '공간감 가창이 켜졌습니다. 볼륨을 직접 줄여보세요.';
+                gameMicBanner.className = 'absolute top-4 right-4 z-10 text-xs px-3 py-1 rounded-md border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 font-semibold shadow-lg';
+                gameMicBanner.innerHTML = `<i class="fa-solid fa-microphone mr-1"></i> 내 마이크 켜짐`;
+            } else {
+                micToggleButton.classList.remove('bg-purple-600', 'border-purple-500', 'text-white', 'mic-active');
+                micToggleButton.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-400');
+                micToggleIcon.className = 'fa-solid fa-microphone-slash text-xl';
+                micGlowDot.style.display = 'none';
+                micStatusText.innerText = '내 마이크 꺼짐';
+                micStatusText.classList.remove('text-purple-400');
+                micStatusText.classList.add('text-slate-300');
+                micSubtext.innerText = '마이크를 활성화하여 이펙트를 얹어 노래해보세요.';
+                gameMicBanner.className = 'absolute top-4 right-4 z-10 text-xs px-3 py-1 rounded-md border bg-red-500/10 border-red-500/20 text-red-400 font-semibold shadow-lg';
+                gameMicBanner.innerHTML = `<i class="fa-solid fa-microphone-slash mr-1"></i> 내 마이크 꺼짐`;
+            }
+        }
+
+        // Live slider listeners
+        reverbSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            reverbValText.innerText = `${val}%`;
+            if (reverbGain && audioCtx) {
+                reverbGain.gain.setValueAtTime(parseFloat(val) / 100, audioCtx.currentTime);
+            }
+        });
+
+        echoSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            echoValText.innerText = `${val}%`;
+            if (echoGain && audioCtx) {
+                echoGain.gain.setValueAtTime(parseFloat(val) / 100, audioCtx.currentTime);
+            }
+        });
+
+        // Toggle Audio controls pane
+        function toggleAdjusterPanel(event) {
+            event.stopPropagation();
+            audioAdjusterPanel.classList.toggle('hidden');
+        }
+
+        function closeAdjusterPanel() {
+            audioAdjusterPanel.classList.add('hidden');
+        }
+
+        // ----------------------------------------------------
+        // Part 2: Character skins and Selection Engine
+        // ----------------------------------------------------
+        /*
+          [USER CUSTOMIZATION GUIDE]
+          캐릭터의 외형 이미지를 교체하려면, 아래 characterSkins 배열 내부의 'imageUrl' 경로를 직접 제작한 이미지 위치로 지정하십시오.
+          이미지가 정상적으로 로드될 경우 캔버스 렌더러가 지정된 원본 비트맵을 그리게 되며,
+          서버가 없거나 이미지 로딩이 지연되는 경우에 대비해 완벽한 벡터 폴백(Cute Vector Draw Logic)이 하단 렌더러에 탑재되어 있습니다.
+        */
+        const characterSkins = [
+            { id: 'mushroom', name: '주황버섯', emoji: '🍄', color: '#f97316', imageLoaded: false, imageObj: null, imageUrl: 'images/mushroom.png' },
+            { id: 'slime', name: '슬라임', emoji: '💧', color: '#10b981', imageLoaded: false, imageObj: null, imageUrl: 'images/slime.png' },
+            { id: 'penguin', name: '펭귄', emoji: '🐧', color: '#3b82f6', imageLoaded: false, imageObj: null, imageUrl: 'images/penguin.png' },
+            { id: 'snail', name: '달팽이', emoji: '🐌', color: '#06b6d4', imageLoaded: false, imageObj: null, imageUrl: 'images/snail.png' },
+            { id: 'human', name: '모험가', emoji: '🧑', color: '#a855f7', imageLoaded: false, imageObj: null, imageUrl: 'images/human.png' }
+        ];
+
+        let selectedSkinId = 'mushroom';
+
+        // Pre-entry selector generator
+        function initCharacterSelectors() {
+            const container = document.getElementById('characterSelectorContainer');
+            container.innerHTML = '';
+            characterSkins.forEach(skin => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `skin-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${skin.id === selectedSkinId ? 'border-purple-500 bg-purple-500/10' : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'}`;
+                button.id = `btn-skin-${skin.id}`;
+                button.onclick = () => selectSkin(skin.id);
+
+                button.innerHTML = `
+                    <span class="text-2xl">${skin.emoji}</span>
+                    <span class="text-[10px] text-slate-400 font-semibold">${skin.name}</span>
+                `;
+                container.appendChild(button);
+
+                // Attempt image loading
+                const img = new Image();
+                img.onload = () => {
+                    skin.imageLoaded = true;
+                    skin.imageObj = img;
+                };
+                img.onerror = () => {
+                    skin.imageLoaded = false; // Fallback to vector renderer
+                };
+                img.src = skin.imageUrl;
+            });
+        }
+
+        function selectSkin(id) {
+            selectedSkinId = id;
+            document.querySelectorAll('.skin-btn').forEach(btn => {
+                btn.classList.remove('border-purple-500', 'bg-purple-500/10');
+                btn.classList.add('border-slate-800', 'bg-slate-900/40');
+            });
+            const activeBtn = document.getElementById(`btn-skin-${id}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('border-slate-800', 'bg-slate-900/40');
+                activeBtn.classList.add('border-purple-500', 'bg-purple-500/10');
+            }
+        }
+
+        // Initialize characters list on script read
+        initCharacterSelectors();
+
+        // ----------------------------------------------------
+        // Part 3: Lobby entry orchestration and Multi-member List
+        // ----------------------------------------------------
+        let myProfile = {
+            id: 'local_user',
+            name: '',
+            skinId: 'mushroom',
+            muted: false, // My voice state for microphone
+            localMutedByMe: false // Self mute indicator flag (not applicable)
+        };
+
+        // Static multiplayers list (Simulated quiet NPCs as requested by user - "우선 너무 부산하게 움직이기 때문에 정적인 상태로 있으면 좋겠음")
+        const loungeMembers = [
+            { id: 'local_user', name: '나', skinId: 'mushroom', isLocalPlayer: true, localMutedByMe: false },
+            { id: 'npc_1', name: '숲의슬라임꾼', skinId: 'slime', isLocalPlayer: false, localMutedByMe: false, x: 250, y: 410 },
+            { id: 'npc_2', name: '커닝시티_전사', skinId: 'human', isLocalPlayer: false, localMutedByMe: false, x: 650, y: 310 },
+            { id: 'npc_3', name: '하늘계단_펭귄', skinId: 'penguin', isLocalPlayer: false, localMutedByMe: false, x: 950, y: 150 },
+            { id: 'npc_4', name: '달팽이세상', skinId: 'snail', isLocalPlayer: false, localMutedByMe: false, x: 1200, y: 410 }
+        ];
+
+        function enterLoungeGame() {
+            const nickname = document.getElementById('nicknameInput').value.trim() || '용사_싱어';
+            myProfile.name = nickname + " (나)";
+            myProfile.skinId = selectedSkinId;
+            
+            // Sync user profile state in array
+            const foundUser = loungeMembers.find(m => m.id === 'local_user');
+            if (foundUser) {
+                foundUser.name = myProfile.name;
+                foundUser.skinId = myProfile.skinId;
+            }
+
+            // Enter active map loop
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            // Force canvas boundaries reset
+            resizeCanvas();
+
+            // Spawn player avatar on bottom floor
+            player.x = 80;
+            player.y = 410;
+            player.targetX = 80;
+            player.targetY = 410;
+            player.skinId = myProfile.skinId;
+
+            // Start Audio contexts
+            startLiveMicAudio();
+
+            // Populate Members List Side panel
+            renderMembersPanel();
+        }
+
+        function renderMembersPanel() {
+            const container = document.getElementById('loungeMemberListContainer');
+            container.innerHTML = '';
+            
+            document.getElementById('userCount').innerText = loungeMembers.length;
+
+            loungeMembers.forEach(member => {
+                const skinObj = characterSkins.find(s => s.id === member.skinId) || characterSkins[0];
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700/80 transition-all";
+                
+                // Mute controls toggle logic (For NPCs: only affects local sound simulation and shows visual slashed mic icon)
+                const muteButtonHtml = member.isLocalPlayer ? '' : `
+                    <button onclick="toggleLocalMute('${member.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center transition-all ${member.localMutedByMe ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}" title="${member.localMutedByMe ? '음소거 해제' : '음소거 하기'}">
+                        <i class="fa-solid ${member.localMutedByMe ? 'fa-volume-xmark' : 'fa-volume-high'} text-xs"></i>
+                    </button>
+                `;
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-lg">
+                            ${skinObj.emoji}
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold ${member.isLocalPlayer ? 'text-purple-400' : 'text-slate-200'}">${member.name}</span>
+                            <p class="text-[9px] text-slate-500">${skinObj.name}</p>
+                        </div>
+                    </div>
+                    ${muteButtonHtml}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleLocalMute(memberId) {
+            const member = loungeMembers.find(m => m.id === memberId);
+            if (member) {
+                member.localMutedByMe = !member.localMutedByMe;
+                renderMembersPanel();
+            }
+        }
+
+        // ----------------------------------------------------
+        // Part 4: 2D MapleStory Platformer Physics Engine & Renderer
+        // ----------------------------------------------------
+        const canvas = document.getElementById('loungeMap');
+        const ctx = canvas.getContext('2d');
+
+        // MAP BACKGROUND CUSTOMIZATION KEY: 
+        // If you wish to set a full background image (e.g., Maple Story leafre/heneseys background), specify image URL here.
+        const MAP_BG_IMAGE_URL = ''; // 'images/map_bg.png' or Similar relative path
+        let isMapBgLoaded = false;
+        const mapBgImage = new Image();
+        if (MAP_BG_IMAGE_URL) {
+            mapBgImage.onload = () => { isMapBgLoaded = true; };
+            mapBgImage.src = MAP_BG_IMAGE_URL;
+        }
+
+        // Platform coordinates layout configurations (MapleStory layout style)
+        // passThrough: True means characters can jump upwards through them, and fall down (drop down)
+        const platforms = [
+            { x1: 0, x2: 1400, y: 450, passThrough: false, desc: "바닥 메인 대지" },
+            { x1: 150, x2: 450, y: 340, passThrough: true, desc: "왼쪽 1층 소형 발판" },
+            { x1: 500, x2: 850, y: 340, passThrough: true, desc: "중앙 1층 발판" },
+            { x1: 300, x2: 650, y: 240, passThrough: true, desc: "왼쪽위 2층 중간 발판" },
+            { x1: 750, x2: 1100, y: 240, passThrough: true, desc: "오른쪽위 2층 중간 발판" },
+            { x1: 550, x2: 950, y: 140, passThrough: true, desc: "최상단 무대 하늘 발판" }
+        ];
+
+        // Ladder objects list
+        const ladders = [
+            { x: 350, y1: 240, y2: 340, desc: "1층과 2층 연결용 사다리" },
+            { x: 600, y1: 140, y2: 240, desc: "2층과 3층 연결용 사다리" },
+            { x: 800, y1: 240, y2: 340, desc: "우측 중앙층 연결 사다리" }
+        ];
+
+        // Set dimensions relative to aspect-ratio container
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Player platformer physical state parameters
+        const player = {
+            x: 100,
+            y: 410,
+            targetX: 100, // For mouse click movement handling
+            targetY: 410,
+            vx: 0,
+            vy: 0,
+            width: 32,
+            height: 38,
+            skinId: 'mushroom',
+            isGrounded: false,
+            climbing: false,
+            currentLadder: null,
+            facingLeft: false,
+            jumpCount: 0,
+            downArrowPressTimer: 0
+        };
+
+        // Static parameters
+        const GRAVITY = 0.45;
+        const FRICTION = 0.78;
+        const WALK_SPEED = 3.2;
+        const JUMP_POWER = -9.2;
+
+        // Input Key state tracking
+        const keys = {};
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            keys[key] = true;
+            keys[e.code.toLowerCase()] = true; // Support ControlLeft etc.
+
+            // Handle instantaneous Jump triggers
+            if (e.key === ' ' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                attemptJump();
+            }
+
+            // Platformer down drop triggers on 'ArrowDown' or Ctrl+ArrowDown
+            if (e.key === 'ArrowDown') {
+                attemptDownDrop();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            keys[key] = false;
+            keys[e.code.toLowerCase()] = false;
+        });
+
+        // Mouse click platform point-destination mapping
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Translate view relative to camera position
+            const clickX = e.clientX - rect.left + camera.x;
+            const clickY = e.clientY - rect.top;
+
+            player.targetX = clickX;
+            // Instantly transition position x smoothly
+            player.vx = (clickX - player.x) * 0.15;
+            
+            // Auto close any floating panels
+            closeAdjusterPanel();
+        });
+
+        // Camera scroll management
+        const camera = {
+            x: 0,
+            maxX: 1400 - 800, // Clamp width
+            update: function() {
+                // Keep player at center of canvas view
+                this.x = player.x - canvas.width / 2;
+                this.x = Math.max(0, Math.min(1400 - canvas.width, this.x));
+            }
+        };
+
+        function attemptJump() {
+            if (player.climbing) {
+                // Exit ladder by jumping off
+                player.climbing = false;
+                player.currentLadder = null;
+                player.vy = JUMP_POWER * 0.8;
+                player.isGrounded = false;
+                return;
+            }
+            if (player.isGrounded) {
+                player.vy = JUMP_POWER;
+                player.isGrounded = false;
+            }
+        }
+
+        function attemptDownDrop() {
+            if (player.isGrounded && !player.climbing) {
+                // Check if currently standing on a passThrough platform
+                const currentPlatform = getStandingPlatform();
+                if (currentPlatform && currentPlatform.passThrough) {
+                    player.y += 8; // Force position below platform threshold
+                    player.isGrounded = false;
+                    player.vy = 1.5;
+                }
+            }
+        }
+
+        // Helper to query currently occupied solid top
+        function getStandingPlatform() {
+            for (let plat of platforms) {
+                if (player.x + 8 >= plat.x1 && player.x - 8 <= plat.x2) {
+                    if (Math.abs((player.y + player.height) - plat.y) <= 4) {
+                        return plat;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Physics solver ticks
+        function updatePhysics() {
+            // 1. Horizontal movements
+            if (keys['arrowleft'] || keys['a']) {
+                player.vx = -WALK_SPEED;
+                player.facingLeft = true;
+                player.climbing = false; // detach
+            } else if (keys['arrowright'] || keys['d']) {
+                player.vx = WALK_SPEED;
+                player.facingLeft = false;
+                player.climbing = false; // detach
+            } else {
+                player.vx *= FRICTION;
+            }
+
+            // 2. Ladder Climbing state logic
+            const nearLadder = getNearbyLadder();
+            if (nearLadder) {
+                if ((keys['arrowup'] || keys['w']) && !player.climbing) {
+                    player.climbing = true;
+                    player.currentLadder = nearLadder;
+                    player.x = nearLadder.x; // Snap precisely to center of ladder
+                    player.vx = 0;
+                }
+            } else {
+                player.climbing = false;
+                player.currentLadder = null;
+            }
+
+            if (player.climbing && player.currentLadder) {
+                player.vy = 0;
+                if (keys['arrowup'] || keys['w']) {
+                    player.y -= 2.2;
+                    if (player.y < player.currentLadder.y1 - player.height + 10) {
+                        // Top of ladder reach
+                        player.y = player.currentLadder.y1 - player.height;
+                        player.climbing = false;
+                        player.currentLadder = null;
+                        player.isGrounded = true;
+                    }
+                } else if (keys['arrowdown'] || keys['s']) {
+                    player.y += 2.2;
+                    if (player.y > player.currentLadder.y2 - player.height) {
+                        // Bottom of ladder reach
+                        player.y = player.currentLadder.y2 - player.height + 8;
+                        player.climbing = false;
+                        player.currentLadder = null;
+                    }
+                }
+            } else {
+                // Apply normal gravity
+                player.vy += GRAVITY;
+                if (player.vy > 12) player.vy = 12; // Terminal fall velocity
+            }
+
+            // Apply calculated movements
+            player.x += player.vx;
+            if (!player.climbing) {
+                player.y += player.vy;
+            }
+
+            // Boundary constraints
+            if (player.x < 16) {
+                player.x = 16;
+                player.vx = 0;
+            }
+            if (player.x > 1400 - 16) {
+                player.x = 1400 - 16;
+                player.vx = 0;
+            }
+
+            // Collision check against platforms (Only when falling downwards)
+            if (!player.climbing && player.vy >= 0) {
+                let landingDetected = false;
+                for (let plat of platforms) {
+                    if (player.x + 12 >= plat.x1 && player.x - 12 <= plat.x2) {
+                        const feetPosBefore = player.y + player.height - player.vy;
+                        const feetPosNow = player.y + player.height;
+                        
+                        if (feetPosBefore <= plat.y + 0.1 && feetPosNow >= plat.y - 0.1) {
+                            player.y = plat.y - player.height;
+                            player.vy = 0;
+                            player.isGrounded = true;
+                            landingDetected = true;
+                            break;
+                        }
+                    }
+                }
+                if (!landingDetected) {
+                    player.isGrounded = false;
+                }
+            }
+
+            camera.update();
+        }
+
+        function getNearbyLadder() {
+            for (let lad of ladders) {
+                if (Math.abs(player.x - lad.x) < 18) {
+                    // Check height overlap
+                    if (player.y + player.height >= lad.y1 - 5 && player.y <= lad.y2 + 5) {
+                        return lad;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // High quality drawing fallback algorithm for adorable custom vector assets
+        function drawVectorCharacter(ctx, skinId, x, y, facingLeft) {
+            ctx.save();
+            ctx.translate(x, y);
+            if (facingLeft) {
+                ctx.scale(-1, 1);
+            }
+
+            if (skinId === 'mushroom') {
+                // 주황버섯 (Orange Mushroom)
+                // Cap
+                ctx.beginPath();
+                ctx.arc(0, -6, 18, Math.PI, 0);
+                ctx.fillStyle = '#f97316';
+                ctx.fill();
+                // Bottom lip of cap
+                ctx.beginPath();
+                ctx.ellipse(0, -6, 18, 5, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#f97316';
+                ctx.fill();
+                
+                // White spots
+                ctx.beginPath();
+                ctx.arc(-8, -12, 3, 0, Math.PI * 2);
+                ctx.arc(8, -10, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                // Stem/Body
+                ctx.beginPath();
+                ctx.roundRect(-10, -5, 20, 16, 8);
+                ctx.fillStyle = '#fef08a';
+                ctx.fill();
+
+                // Eyes
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(3, -2, 2.5, 5);
+                ctx.fillRect(9, -2, 2.5, 5);
+
+            } else if (skinId === 'slime') {
+                // 슬라임 (Green Slime)
+                ctx.beginPath();
+                ctx.moveTo(-16, 10);
+                ctx.bezierCurveTo(-18, -10, 18, -10, 16, 10);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.85)';
+                ctx.fill();
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Antenna droplet node
+                ctx.beginPath();
+                ctx.arc(0, -11, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#34d399';
+                ctx.fill();
+
+                // Eyes & Blush
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(-5, 6, 2, 0, Math.PI*2);
+                ctx.arc(5, 6, 2, 0, Math.PI*2);
+                ctx.fillStyle = '#f43f5e'; // cheeks blush
+                ctx.globalAlpha = 0.5;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(2, 2, 2, 4);
+                ctx.fillRect(-4, 2, 2, 4);
+
+            } else if (skinId === 'penguin') {
+                // 펭귄 (Penguin)
+                // Main torso
+                ctx.beginPath();
+                ctx.roundRect(-14, -8, 28, 24, [14, 14, 8, 8]);
+                ctx.fillStyle = '#1e293b';
+                ctx.fill();
+
+                // White belly
+                ctx.beginPath();
+                ctx.ellipse(0, 4, 10, 10, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                // Yellow Beak
+                ctx.beginPath();
+                ctx.moveTo(-4, -1);
+                ctx.lineTo(4, -1);
+                ctx.lineTo(0, 3);
+                ctx.closePath();
+                ctx.fillStyle = '#eab308';
+                ctx.fill();
+
+                // Eyes
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-4, -4, 3, 0, Math.PI * 2);
+                ctx.arc(4, -4, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(-4, -4, 1.5, 0, Math.PI * 2);
+                ctx.arc(4, -4, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (skinId === 'snail') {
+                // 달팽이 (Snail)
+                // Body
+                ctx.beginPath();
+                ctx.ellipse(-8, 8, 14, 5, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#a3e635';
+                ctx.fill();
+
+                // Shell spiral
+                ctx.beginPath();
+                ctx.arc(4, 0, 11, 0, Math.PI * 2);
+                ctx.fillStyle = '#06b6d4';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(4, 0, 7, 0, Math.PI * 2);
+                ctx.strokeStyle = '#0891b2';
+                ctx.lineWidth = 2.2;
+                ctx.stroke();
+
+                // Eyes on stalks
+                ctx.beginPath();
+                ctx.moveTo(-12, 4);
+                ctx.lineTo(-14, -6);
+                ctx.strokeStyle = '#a3e635';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(-14, -6, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(-14, -6, 1, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else {
+                // 모험가 인간 (Human Adventurer)
+                // Face
+                ctx.beginPath();
+                ctx.arc(0, -6, 11, 0, Math.PI * 2);
+                ctx.fillStyle = '#fbcfe8';
+                ctx.fill();
+
+                // Hair (Retro Cap/Helm look)
+                ctx.beginPath();
+                ctx.arc(0, -10, 12, Math.PI, 0);
+                ctx.fillStyle = '#8b5cf6';
+                ctx.fill();
+
+                // Shirt torso
+                ctx.beginPath();
+                ctx.roundRect(-10, 4, 20, 12, 3);
+                ctx.fillStyle = '#4f46e5';
+                ctx.fill();
+
+                // Eyes
+                ctx.fillStyle = '#1e1b4b';
+                ctx.fillRect(-4, -6, 2, 4);
+                ctx.fillRect(2, -6, 2, 4);
+            }
+
+            ctx.restore();
+        }
+
+        // Game looping rendering triggers
+        function runMainLoungeGame() {
+            updatePhysics();
+
+            // Clear screen
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Background (If customized with image, draw background, else draw default night grid)
+            if (isMapBgLoaded) {
+                // Parallax scrolling layout logic using camera factor
+                ctx.drawImage(mapBgImage, -camera.x * 0.4, 0, 1400, canvas.height);
+            } else {
+                // Draw default nostalgic deep sky gradients
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                skyGrad.addColorStop(0, '#020208');
+                skyGrad.addColorStop(1, '#0e0e24');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Moon
+                ctx.beginPath();
+                ctx.arc(280 - camera.x * 0.2, 80, 24, 0, Math.PI * 2);
+                ctx.fillStyle = '#fef08a';
+                ctx.shadowColor = '#fef08a';
+                ctx.shadowBlur = 20;
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
+            }
+
+            // Translate matrix coordinate based on Camera X scrolling position
+            ctx.save();
+            ctx.translate(-camera.x, 0);
+
+            // 2. Draw Ladders
+            ladders.forEach(lad => {
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(lad.x - 10, lad.y1);
+                ctx.lineTo(lad.x - 10, lad.y2);
+                ctx.moveTo(lad.x + 10, lad.y1);
+                ctx.lineTo(lad.x + 10, lad.y2);
+                ctx.stroke();
+
+                // draw rungs
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 2.5;
+                for (let ry = lad.y1 + 10; ry < lad.y2; ry += 16) {
+                    ctx.beginPath();
+                    ctx.moveTo(lad.x - 10, ry);
+                    ctx.lineTo(lad.x + 10, ry);
+                    ctx.stroke();
+                }
+            });
+
+            // 3. Draw Platforms (Nostalgic grass tiles look)
+            platforms.forEach(plat => {
+                // Draw ground layers
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(plat.x1, plat.y, plat.x2 - plat.x1, 15);
+
+                // Draw grass tops (nostalgic green)
+                ctx.fillStyle = '#84cc16';
+                ctx.fillRect(plat.x1, plat.y, plat.x2 - plat.x1, 4);
+
+                // Draw edge dots
+                ctx.fillStyle = '#4d7c0f';
+                for (let px = plat.x1; px < plat.x2; px += 12) {
+                    ctx.fillRect(px, plat.y + 4, 3, 3);
+                }
+            });
+
+            // 4. Draw static simulation users (NPCs)
+            loungeMembers.forEach(member => {
+                if (member.isLocalPlayer) return; // Draw local player afterwards
+                
+                // Draw static position
+                const nx = member.x || 300;
+                const ny = member.y || 410;
+
+                // Little floating bobbing animation to represent dynamic idling
+                const bobOffset = Math.sin(Date.now() * 0.003 + nx) * 2;
+
+                // Draw NPC body vector
+                drawVectorCharacter(ctx, member.skinId, nx, ny + bobOffset, false);
+
+                // Draw Name label tag
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+                ctx.beginPath();
+                ctx.roundRect(nx - 40, ny - 30 + bobOffset, 80, 16, 4);
+                ctx.fill();
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.font = 'bold 10px Pretendard';
+                ctx.textAlign = 'center';
+                ctx.fillText(member.name, nx, ny - 18 + bobOffset);
+
+                // LOCAL MUTE MARKER OVERLAY (Only visible to local player who muted them!)
+                if (member.localMutedByMe) {
+                    ctx.beginPath();
+                    ctx.arc(nx + 10, ny - 32 + bobOffset, 7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 8px Arial';
+                    ctx.fillText('X', nx + 10, ny - 29 + bobOffset);
+                }
+            });
+
+            // 5. Draw local player character avatar
+            // Gentle bobbing motion
+            const pBob = Math.sin(Date.now() * 0.004) * 1.5;
+            drawVectorCharacter(ctx, player.skinId, player.x, player.y + pBob, player.facingLeft);
+
+            // Draw player nametag container
+            ctx.fillStyle = 'rgba(139, 92, 246, 0.85)'; // purple signature
+            ctx.beginPath();
+            ctx.roundRect(player.x - 45, player.y - 32 + pBob, 90, 18, 5);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'black 11px Pretendard';
+            ctx.textAlign = 'center';
+            ctx.fillText(myProfile.name, player.x, player.y - 19 + pBob);
+
+            // Active micro-status bubble on avatar
+            ctx.beginPath();
+            ctx.arc(player.x + 10, player.y + 10, 5, 0, Math.PI * 2);
+            ctx.fillStyle = isMicOn ? '#10b981' : '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = '#080710';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.restore(); // Restore view space adjustments
+
+            requestAnimationFrame(runMainLoungeGame);
+        }
+
+        // Trigger loop initializers
+        window.onload = function() {
+            resizeCanvas();
+            runMainLoungeGame();
+        };
+
+    </script>
+</body>
+</html>
